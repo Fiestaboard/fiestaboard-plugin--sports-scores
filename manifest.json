@@ -12,43 +12,189 @@
   "settings_schema": {
     "type": "object",
     "properties": {
-      "enabled": {"type": "boolean", "title": "Enable Sports Scores", "default": false},
-      "sports": {"type": "array", "title": "Sports", "description": "Select sports to display scores for", "minItems": 1, "items": {"type": "string", "enum": ["NFL", "Soccer", "NHL", "NBA"]}, "uniqueItems": true},
-      "api_key": {"type": "string", "title": "TheSportsDB API Key (Optional)", "description": "Optional API key for premium features. Free tier uses key '123' by default.", "ui:widget": "password"},
-      "max_games_per_sport": {"type": "integer", "title": "Max Games Per Sport", "description": "Maximum number of games to fetch per sport (1-10)", "default": 3, "minimum": 1, "maximum": 10},
-      "refresh_seconds": {"type": "integer", "title": "Refresh Interval (seconds)", "default": 300, "minimum": 60}
+      "enabled": {
+        "type": "boolean",
+        "title": "Enable Sports Scores",
+        "default": false
+      },
+      "sports": {
+        "type": "array",
+        "title": "Sports",
+        "description": "Select sports to display scores for",
+        "minItems": 1,
+        "items": {
+          "type": "string",
+          "enum": [
+            "NFL",
+            "Soccer",
+            "NHL",
+            "NBA"
+          ]
+        },
+        "uniqueItems": true
+      },
+      "api_key": {
+        "type": "string",
+        "title": "TheSportsDB API Key (Optional)",
+        "description": "Optional API key for premium features. Free tier uses key '123' by default.",
+        "ui:widget": "password"
+      },
+      "max_games_per_sport": {
+        "type": "integer",
+        "title": "Max Games Per Sport",
+        "description": "Maximum number of games to fetch per sport (1-10)",
+        "default": 3,
+        "minimum": 1,
+        "maximum": 10
+      },
+      "refresh_seconds": {
+        "type": "integer",
+        "title": "Refresh Interval (seconds)",
+        "default": 300,
+        "minimum": 60
+      }
     },
-    "required": ["sports"]
+    "required": [
+      "sports"
+    ]
   },
   "env_vars": [
-    {"name": "SPORTS_SCORES_ENABLED", "required": false, "description": "Enable sports scores feature", "default": "false"},
-    {"name": "SPORTS_SCORES_API_KEY", "required": false, "description": "Optional TheSportsDB API key for premium features"},
-    {"name": "SPORTS_SCORES_SPORTS", "required": false, "description": "Comma-separated list of sports (NFL,Soccer,NHL,NBA)"},
-    {"name": "SPORTS_SCORES_MAX_GAMES", "required": false, "description": "Maximum games per sport (default: 3)", "default": "3"}
+    {
+      "name": "SPORTS_SCORES_ENABLED",
+      "required": false,
+      "description": "Enable sports scores feature",
+      "default": "false"
+    },
+    {
+      "name": "SPORTS_SCORES_API_KEY",
+      "required": false,
+      "description": "Optional TheSportsDB API key for premium features"
+    },
+    {
+      "name": "SPORTS_SCORES_SPORTS",
+      "required": false,
+      "description": "Comma-separated list of sports (NFL,Soccer,NHL,NBA)"
+    },
+    {
+      "name": "SPORTS_SCORES_MAX_GAMES",
+      "required": false,
+      "description": "Maximum games per sport (default: 3)",
+      "default": "3"
+    }
   ],
   "variables": {
     "groups": {
-      "latest": {"label": "Latest Game"},
-      "display": {"label": "Display"}
+      "latest": {
+        "label": "Latest Game"
+      },
+      "display": {
+        "label": "Display"
+      }
     },
     "simple": {
-      "sport": {"description": "Sport type of latest game", "type": "string", "max_length": 10, "group": "latest", "example": "NFL"},
-      "team1": {"description": "First team abbreviation", "type": "string", "max_length": 10, "group": "latest", "example": "SF"},
-      "team2": {"description": "Second team abbreviation", "type": "string", "max_length": 10, "group": "latest", "example": "KC"},
-      "score1": {"description": "First team score", "type": "number", "max_length": 3, "group": "latest", "example": "24"},
-      "score2": {"description": "Second team score", "type": "number", "max_length": 3, "group": "latest", "example": "21"},
-      "status": {"description": "Game status (e.g., Final, Q3, Live)", "type": "string", "max_length": 15, "group": "latest", "example": "Final"},
-      "date": {"description": "Game date", "type": "string", "max_length": 10, "group": "latest", "example": "2025-03-15"},
-      "time": {"description": "Game time", "type": "string", "max_length": 8, "group": "latest", "example": "8:20 PM"},
-      "formatted": {"description": "Pre-formatted game score display", "type": "string", "max_length": 22, "group": "display", "example": "SF 24 - KC 21 Final"},
-      "sport_count": {"description": "Number of tracked sports", "type": "number", "max_length": 1, "group": "display", "example": "2"},
-      "game_count": {"description": "Total number of games", "type": "number", "max_length": 2, "group": "display", "example": "6"},
-      "last_updated": {"description": "Timestamp of last data fetch", "type": "string", "max_length": 25, "group": "display", "example": "2025-03-15 10:00:00"}
+      "sport": {
+        "description": "Sport type of latest game",
+        "type": "string",
+        "max_length": 10,
+        "group": "latest",
+        "example": "NFL"
+      },
+      "team1": {
+        "description": "First team abbreviation",
+        "type": "string",
+        "max_length": 10,
+        "group": "latest",
+        "example": "SF"
+      },
+      "team2": {
+        "description": "Second team abbreviation",
+        "type": "string",
+        "max_length": 10,
+        "group": "latest",
+        "example": "KC"
+      },
+      "score1": {
+        "description": "First team score",
+        "type": "number",
+        "max_length": 3,
+        "group": "latest",
+        "example": "24"
+      },
+      "score2": {
+        "description": "Second team score",
+        "type": "number",
+        "max_length": 3,
+        "group": "latest",
+        "example": "21"
+      },
+      "status": {
+        "description": "Game status (e.g., Final, Q3, Live)",
+        "type": "string",
+        "max_length": 15,
+        "group": "latest",
+        "example": "Final"
+      },
+      "date": {
+        "description": "Game date",
+        "type": "string",
+        "max_length": 10,
+        "group": "latest",
+        "example": "2025-03-15"
+      },
+      "time": {
+        "description": "Game time",
+        "type": "string",
+        "max_length": 8,
+        "group": "latest",
+        "example": "8:20 PM"
+      },
+      "formatted": {
+        "description": "Pre-formatted game score display",
+        "type": "string",
+        "max_length": 22,
+        "group": "display",
+        "example": "SF 24 - KC 21 Final"
+      },
+      "sport_count": {
+        "description": "Number of tracked sports",
+        "type": "number",
+        "max_length": 1,
+        "group": "display",
+        "example": "2"
+      },
+      "game_count": {
+        "description": "Total number of games",
+        "type": "number",
+        "max_length": 2,
+        "group": "display",
+        "example": "6"
+      },
+      "last_updated": {
+        "description": "Timestamp of last data fetch",
+        "type": "string",
+        "max_length": 25,
+        "group": "display",
+        "example": "2025-03-15 10:00:00"
+      }
     },
     "arrays": {
       "games": {
         "label_field": "formatted",
-        "item_fields": ["sport", "team1", "team2", "team1_full", "team2_full", "team1_color", "team2_color", "score1", "score2", "status", "date", "time", "formatted"]
+        "item_fields": [
+          "sport",
+          "team1",
+          "team2",
+          "team1_full",
+          "team2_full",
+          "team1_color",
+          "team2_color",
+          "score1",
+          "score2",
+          "status",
+          "date",
+          "time",
+          "formatted"
+        ]
       }
     }
   },
@@ -63,5 +209,13 @@
     "games.*.status": 15,
     "games.*.formatted": 20
   },
-  "fiestaboard_version": ">=2.10.0"
+  "fiestaboard_version": ">=2.10.0",
+  "screenshots": [
+    {
+      "src": "docs/board-display.png",
+      "alt": "Sports Scores displayed on a Vestaboard",
+      "caption": "Display recent sports match scores from NFL, Soccer, NHL, and NBA",
+      "primary": true
+    }
+  ]
 }

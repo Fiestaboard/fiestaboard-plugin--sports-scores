@@ -54,7 +54,7 @@ The plugin maps user-friendly sport names to TheSportsDB identifiers:
 
 ## Screenshot
 
-![Sports Scores Display](./docs/sports-scores-display.png)
+![Sports Scores Display](./docs/board-display.png)
 
 *Example display showing NBA scores with color-coded team status indicators*
 
