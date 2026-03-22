@@ -411,8 +411,8 @@ class TestSportsScoresPlugin:
             result = plugin.fetch_data()
             
             assert result.available is True
-            for var in declared_simple:
-                assert var in result.data, f"Variable '{var}' declared in manifest but not in data"
+            for var_name in declared_simple.keys():
+                assert var_name in result.data, f"Variable '{var_name}' declared in manifest but not in data"
 
 
 class TestPluginEdgeCases:
@@ -1291,3 +1291,64 @@ class TestPluginEdgeCases:
         assert result is not None
         assert result["score1"] == 0
         assert result["score2"] == 0
+
+
+class TestManifestMetadata:
+    """Tests for rich variable metadata in manifest.json."""
+
+    @pytest.fixture(autouse=True)
+    def load_manifest(self):
+        manifest_path = Path(__file__).parent.parent / "manifest.json"
+        with open(manifest_path) as f:
+            self.manifest = json.load(f)
+
+    def test_simple_variables_are_dicts(self):
+        """simple variables must be a dict of dicts, not a list."""
+        simple = self.manifest["variables"]["simple"]
+        assert isinstance(simple, dict), "variables.simple should be a dict"
+        for name, meta in simple.items():
+            assert isinstance(meta, dict), f"'{name}' metadata should be a dict"
+
+    def test_each_simple_variable_has_required_fields(self):
+        """Every simple variable must have description, type, and group."""
+        for name, meta in self.manifest["variables"]["simple"].items():
+            assert "description" in meta, f"'{name}' missing description"
+            assert "type" in meta, f"'{name}' missing type"
+            assert "group" in meta, f"'{name}' missing group"
+
+    def test_groups_defined(self):
+        """Variable groups must be declared and non-empty."""
+        groups = self.manifest["variables"].get("groups", {})
+        assert len(groups) > 0, "At least one group must be defined"
+        for gid, gmeta in groups.items():
+            assert "label" in gmeta, f"Group '{gid}' missing label"
+
+    def test_variable_groups_reference_valid_group(self):
+        """Each variable's group must exist in the groups map."""
+        groups = set(self.manifest["variables"]["groups"].keys())
+        for name, meta in self.manifest["variables"]["simple"].items():
+            assert meta["group"] in groups, f"'{name}' references unknown group '{meta['group']}'"
+
+    def test_example_values_present(self):
+        """Every simple variable should have an example value."""
+        for name, meta in self.manifest["variables"]["simple"].items():
+            assert "example" in meta, f"'{name}' missing example"
+
+    def test_max_length_present(self):
+        """Every simple variable should declare max_length."""
+        for name, meta in self.manifest["variables"]["simple"].items():
+            assert "max_length" in meta, f"'{name}' missing max_length"
+            assert isinstance(meta["max_length"], int), f"'{name}' max_length must be int"
+
+    def test_arrays_section_present(self):
+        """arrays section must exist with games array."""
+        arrays = self.manifest["variables"].get("arrays", {})
+        assert "games" in arrays, "games array must be defined"
+        assert "item_fields" in arrays["games"], "games must have item_fields"
+        assert "label_field" in arrays["games"], "games must have label_field"
+
+    def test_type_values_are_valid(self):
+        """Variable types must be one of the allowed types."""
+        allowed = {"string", "number", "boolean"}
+        for name, meta in self.manifest["variables"]["simple"].items():
+            assert meta["type"] in allowed, f"'{name}' has invalid type '{meta['type']}'"
