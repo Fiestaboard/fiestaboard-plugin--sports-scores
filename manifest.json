@@ -1,7 +1,7 @@
 {
   "id": "sports_scores",
   "name": "Sports Scores",
-  "version": "1.1.0",
+  "version": "1.1.1",
   "description": "Display recent sports match scores from NFL, Soccer, NHL, and NBA",
   "author": "FiestaBoard Team",
   "repository": "https://github.com/Fiestaboard/fiestaboard-plugin--sports-scores",
@@ -219,41 +219,64 @@
     }
   ],
   "demo": {
-    "name": "Sports Scores Demo",
-    "device_type": "flagship",
-    "template": [
-      "Live Scores",
-      "{{sports_scores.formatted}}",
-      "",
-      "",
-      "",
-      "Games {{sports_scores.game_count}}"
-    ],
-    "line_metadata": [
-      {
-        "alignment": "center",
-        "wrap": false
-      },
-      {
-        "alignment": "left",
-        "wrap": true
-      },
-      {
-        "alignment": "left",
-        "wrap": false
-      },
-      {
-        "alignment": "left",
-        "wrap": false
-      },
-      {
-        "alignment": "left",
-        "wrap": false
-      },
-      {
-        "alignment": "center",
-        "wrap": false
-      }
-    ]
+    "flagship": {
+      "name": "Sports Scores Demo",
+      "template": [
+        "Live Scores",
+        "{{sports_scores.formatted}}",
+        "",
+        "",
+        "",
+        "Games {{sports_scores.game_count}}"
+      ],
+      "line_metadata": [
+        {
+          "alignment": "center",
+          "wrap": false
+        },
+        {
+          "alignment": "left",
+          "wrap": true
+        },
+        {
+          "alignment": "left",
+          "wrap": false
+        },
+        {
+          "alignment": "left",
+          "wrap": false
+        },
+        {
+          "alignment": "left",
+          "wrap": false
+        },
+        {
+          "alignment": "center",
+          "wrap": false
+        }
+      ]
+    },
+    "note": {
+      "name": "Sports Scores (Note)",
+      "template": [
+        "LIVE SCORES",
+        "{{sports_scores.formatted}}",
+        "{{sports_scores.game_count}} GAMES"
+      ],
+      "line_metadata": [
+        {
+          "alignment": "left",
+          "wrap": false
+        },
+        {
+          "alignment": "left",
+          "wrap": true
+        },
+        {
+          "alignment": "left",
+          "wrap": false
+        }
+      ]
+    }
   }
 }
