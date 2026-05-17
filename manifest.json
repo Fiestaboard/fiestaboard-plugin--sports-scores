@@ -1,7 +1,7 @@
 {
   "id": "sports_scores",
   "name": "Sports Scores",
-  "version": "1.1.1",
+  "version": "1.1.2",
   "description": "Display recent sports match scores from NFL, Soccer, NHL, and NBA",
   "author": "FiestaBoard Team",
   "repository": "https://github.com/Fiestaboard/fiestaboard-plugin--sports-scores",
