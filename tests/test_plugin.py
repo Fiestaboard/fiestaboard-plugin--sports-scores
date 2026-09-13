@@ -212,10 +212,11 @@ class TestSportsScoresPlugin:
             mock_response.raise_for_status = Mock()
             mock_response.headers = {"content-type": "application/json"}
             
-            # Check which sport is being requested
-            if "American%20Football" in args[0] or "American" in str(kwargs):
+            # Check which league is being requested
+            params = kwargs.get("params", {})
+            if params.get("l") == "4391" or params.get("id") == "4391":
                 mock_response.json.return_value = mock_api_response_nfl
-            elif "Basketball" in args[0] or "Basketball" in str(kwargs):
+            elif params.get("l") == "4387" or params.get("id") == "4387":
                 mock_response.json.return_value = mock_api_response_nba
             else:
                 mock_response.json.return_value = {"event": []}
@@ -754,7 +755,7 @@ class TestPluginEdgeCases:
         mock_get.side_effect = Exception("API error")
         
         plugin = SportsScoresPlugin(sample_manifest)
-        result = plugin._fetch_sport_scores("NFL", "American%20Football", "test_key", 3)
+        result = plugin._fetch_sport_scores("NFL", {"l": "4391"}, "test_key", 3)
         assert result == []
 
     @patch('plugins.sports_scores.requests.get')
@@ -765,7 +766,7 @@ class TestPluginEdgeCases:
         mock_get.return_value = mock_response
         
         plugin = SportsScoresPlugin(sample_manifest)
-        result = plugin._fetch_sport_scores("NFL", "American%20Football", "test_key", 3)
+        result = plugin._fetch_sport_scores("NFL", {"l": "4391"}, "test_key", 3)
         assert result == []
 
     @patch('plugins.sports_scores.requests.get')
@@ -776,12 +777,12 @@ class TestPluginEdgeCases:
         mock_get.return_value = mock_response
         
         plugin = SportsScoresPlugin(sample_manifest)
-        result = plugin._fetch_sport_scores("NFL", "American%20Football", "paid_key", 3)
+        result = plugin._fetch_sport_scores("NFL", {"l": "4391"}, "paid_key", 3)
         assert result == []
 
     @patch('plugins.sports_scores.requests.get')
-    def test_fetch_nfl_via_league_success(self, mock_get, sample_manifest):
-        """Test _fetch_nfl_via_league with successful response."""
+    def test_fetch_past_league_success(self, mock_get, sample_manifest):
+        """Test _fetch_past_league with successful response."""
         mock_response = Mock()
         mock_response.status_code = 200
         mock_response.headers = {"content-type": "application/json"}
@@ -804,27 +805,27 @@ class TestPluginEdgeCases:
         mock_get.return_value = mock_response
         
         plugin = SportsScoresPlugin(sample_manifest)
-        result = plugin._fetch_nfl_via_league("test_key", 3)
+        result = plugin._fetch_past_league("NFL", "4391", "test_key", 3)
         assert len(result) > 0
 
     @patch('plugins.sports_scores.requests.get')
-    def test_fetch_nfl_via_league_api_error(self, mock_get, sample_manifest):
-        """Test _fetch_nfl_via_league handles API errors."""
+    def test_fetch_past_league_api_error(self, mock_get, sample_manifest):
+        """Test _fetch_past_league handles API errors."""
         mock_get.side_effect = Exception("API error")
         
         plugin = SportsScoresPlugin(sample_manifest)
-        result = plugin._fetch_nfl_via_league("test_key", 3)
+        result = plugin._fetch_past_league("NFL", "4391", "test_key", 3)
         assert result == []
 
     @patch('plugins.sports_scores.requests.get')
-    def test_fetch_nfl_via_league_no_events(self, mock_get, sample_manifest):
-        """Test _fetch_nfl_via_league with no events."""
+    def test_fetch_past_league_no_events(self, mock_get, sample_manifest):
+        """Test _fetch_past_league with no events."""
         mock_response = Mock()
         mock_response.json.return_value = {"events": None}
         mock_get.return_value = mock_response
         
         plugin = SportsScoresPlugin(sample_manifest)
-        result = plugin._fetch_nfl_via_league("test_key", 3)
+        result = plugin._fetch_past_league("NFL", "4391", "test_key", 3)
         assert result == []
 
     def test_abbreviate_team_name_short(self, sample_manifest):
@@ -949,7 +950,7 @@ class TestPluginEdgeCases:
         mock_get.return_value = mock_response
         
         plugin = SportsScoresPlugin(sample_manifest)
-        result = plugin._fetch_sport_scores("NFL", "American%20Football", "test_key", 3)
+        result = plugin._fetch_sport_scores("NFL", {"l": "4391"}, "test_key", 3)
         assert result == []
 
     @patch('plugins.sports_scores.requests.get')
@@ -962,7 +963,7 @@ class TestPluginEdgeCases:
         mock_get.return_value = mock_response
         
         plugin = SportsScoresPlugin(sample_manifest)
-        result = plugin._fetch_sport_scores("NFL", "American%20Football", "test_key", 3)
+        result = plugin._fetch_sport_scores("NFL", {"l": "4391"}, "test_key", 3)
         assert result == []
 
     @patch('plugins.sports_scores.requests.get')
@@ -973,7 +974,7 @@ class TestPluginEdgeCases:
         mock_get.return_value = mock_response
         
         plugin = SportsScoresPlugin(sample_manifest)
-        result = plugin._fetch_sport_scores("NFL", "American%20Football", "paid_key", 3)
+        result = plugin._fetch_sport_scores("NFL", {"l": "4391"}, "paid_key", 3)
         assert result == []
 
     @patch('plugins.sports_scores.requests.get')
@@ -986,35 +987,35 @@ class TestPluginEdgeCases:
         mock_get.return_value = mock_response
         
         plugin = SportsScoresPlugin(sample_manifest)
-        result = plugin._fetch_sport_scores("NFL", "American%20Football", "test_key", 3)
+        result = plugin._fetch_sport_scores("NFL", {"l": "4391"}, "test_key", 3)
         assert result == []
 
     @patch('plugins.sports_scores.requests.get')
-    def test_fetch_nfl_via_league_status_not_200(self, mock_get, sample_manifest):
-        """Test _fetch_nfl_via_league with non-200 status."""
+    def test_fetch_past_league_status_not_200(self, mock_get, sample_manifest):
+        """Test _fetch_past_league with non-200 status."""
         mock_response = Mock()
         mock_response.status_code = 403
         mock_get.return_value = mock_response
         
         plugin = SportsScoresPlugin(sample_manifest)
-        result = plugin._fetch_nfl_via_league("test_key", 3)
+        result = plugin._fetch_past_league("NFL", "4391", "test_key", 3)
         assert result == []
 
     @patch('plugins.sports_scores.requests.get')
-    def test_fetch_nfl_via_league_non_json(self, mock_get, sample_manifest):
-        """Test _fetch_nfl_via_league with non-JSON response."""
+    def test_fetch_past_league_non_json(self, mock_get, sample_manifest):
+        """Test _fetch_past_league with non-JSON response."""
         mock_response = Mock()
         mock_response.status_code = 200
         mock_response.headers = {"content-type": "text/html"}
         mock_get.return_value = mock_response
         
         plugin = SportsScoresPlugin(sample_manifest)
-        result = plugin._fetch_nfl_via_league("test_key", 3)
+        result = plugin._fetch_past_league("NFL", "4391", "test_key", 3)
         assert result == []
 
     @patch('plugins.sports_scores.requests.get')
-    def test_fetch_nfl_via_league_json_parse_error(self, mock_get, sample_manifest):
-        """Test _fetch_nfl_via_league with JSON parse error."""
+    def test_fetch_past_league_json_parse_error(self, mock_get, sample_manifest):
+        """Test _fetch_past_league with JSON parse error."""
         mock_response = Mock()
         mock_response.status_code = 200
         mock_response.headers = {"content-type": "application/json"}
@@ -1022,12 +1023,12 @@ class TestPluginEdgeCases:
         mock_get.return_value = mock_response
         
         plugin = SportsScoresPlugin(sample_manifest)
-        result = plugin._fetch_nfl_via_league("test_key", 3)
+        result = plugin._fetch_past_league("NFL", "4391", "test_key", 3)
         assert result == []
 
     @patch('plugins.sports_scores.requests.get')
-    def test_fetch_nfl_via_league_events_not_list(self, mock_get, sample_manifest):
-        """Test _fetch_nfl_via_league when events is not a list."""
+    def test_fetch_past_league_events_not_list(self, mock_get, sample_manifest):
+        """Test _fetch_past_league when events is not a list."""
         mock_response = Mock()
         mock_response.status_code = 200
         mock_response.headers = {"content-type": "application/json"}
@@ -1035,12 +1036,12 @@ class TestPluginEdgeCases:
         mock_get.return_value = mock_response
         
         plugin = SportsScoresPlugin(sample_manifest)
-        result = plugin._fetch_nfl_via_league("test_key", 3)
+        result = plugin._fetch_past_league("NFL", "4391", "test_key", 3)
         assert result == []
 
     @patch('plugins.sports_scores.requests.get')
-    def test_fetch_nfl_via_league_filters_zero_scores_free_api(self, mock_get, sample_manifest):
-        """Test _fetch_nfl_via_league filters zero scores with free API."""
+    def test_fetch_past_league_filters_zero_scores_free_api(self, mock_get, sample_manifest):
+        """Test _fetch_past_league filters zero scores with free API."""
         mock_response = Mock()
         mock_response.status_code = 200
         mock_response.headers = {"content-type": "application/json"}
@@ -1063,7 +1064,7 @@ class TestPluginEdgeCases:
         mock_get.return_value = mock_response
         
         plugin = SportsScoresPlugin(sample_manifest)
-        result = plugin._fetch_nfl_via_league("123", 3)
+        result = plugin._fetch_past_league("NFL", "4391", "123", 3)
         assert len(result) == 1
         assert result[0]["score1"] == 24
 
@@ -1151,11 +1152,11 @@ class TestPluginEdgeCases:
         mock_get.return_value = mock_response
         
         plugin = SportsScoresPlugin(sample_manifest)
-        result = plugin._fetch_sport_scores("NFL", "American%20Football", "test_key", 3)
+        result = plugin._fetch_sport_scores("NFL", {"l": "4391"}, "test_key", 3)
         assert result == []
 
     @patch('plugins.sports_scores.requests.get')
-    def test_fetch_sport_scores_nfl_fallback_on_non_json(self, mock_get, sample_manifest):
+    def test_fetch_sport_scores_league_fallback_on_non_json(self, mock_get, sample_manifest):
         """Test _fetch_sport_scores NFL fallback on non-JSON response."""
         mock_response = Mock()
         mock_response.status_code = 200
@@ -1164,12 +1165,12 @@ class TestPluginEdgeCases:
         mock_get.return_value = mock_response
         
         plugin = SportsScoresPlugin(sample_manifest)
-        with patch.object(plugin, '_fetch_nfl_via_league', return_value=[{"sport": "NFL"}]):
-            result = plugin._fetch_sport_scores("NFL", "American%20Football", "test_key", 3)
+        with patch.object(plugin, '_fetch_past_league', return_value=[{"sport": "NFL"}]):
+            result = plugin._fetch_sport_scores("NFL", {"l": "4391"}, "test_key", 3)
             assert len(result) > 0
 
     @patch('plugins.sports_scores.requests.get')
-    def test_fetch_sport_scores_no_events_nfl_fallback(self, mock_get, sample_manifest):
+    def test_fetch_sport_scores_no_events_league_fallback(self, mock_get, sample_manifest):
         """Test _fetch_sport_scores NFL fallback when no events."""
         mock_response = Mock()
         mock_response.status_code = 200
@@ -1178,8 +1179,8 @@ class TestPluginEdgeCases:
         mock_get.return_value = mock_response
         
         plugin = SportsScoresPlugin(sample_manifest)
-        with patch.object(plugin, '_fetch_nfl_via_league', return_value=[{"sport": "NFL"}]):
-            result = plugin._fetch_sport_scores("NFL", "American%20Football", "test_key", 3)
+        with patch.object(plugin, '_fetch_past_league', return_value=[{"sport": "NFL"}]):
+            result = plugin._fetch_sport_scores("NFL", {"l": "4391"}, "test_key", 3)
             assert len(result) > 0
 
     @patch('plugins.sports_scores.requests.get')
@@ -1197,8 +1198,8 @@ class TestPluginEdgeCases:
         mock_get.side_effect = [mock_response_today, mock_response_yesterday]
         
         plugin = SportsScoresPlugin(sample_manifest)
-        with patch.object(plugin, '_fetch_nfl_via_league', return_value=[]):
-            result = plugin._fetch_sport_scores("NFL", "American%20Football", "test_key", 3)
+        with patch.object(plugin, '_fetch_past_league', return_value=[]):
+            result = plugin._fetch_sport_scores("NFL", {"l": "4391"}, "test_key", 3)
             assert mock_get.call_count == 2
 
     @patch('plugins.sports_scores.requests.get')
@@ -1216,8 +1217,8 @@ class TestPluginEdgeCases:
         mock_get.side_effect = [mock_response_today, mock_response_yesterday]
         
         plugin = SportsScoresPlugin(sample_manifest)
-        with patch.object(plugin, '_fetch_nfl_via_league', return_value=[]):
-            result = plugin._fetch_sport_scores("NFL", "American%20Football", "test_key", 3)
+        with patch.object(plugin, '_fetch_past_league', return_value=[]):
+            result = plugin._fetch_sport_scores("NFL", {"l": "4391"}, "test_key", 3)
             assert result == []
 
     @patch('plugins.sports_scores.requests.get')
@@ -1234,8 +1235,8 @@ class TestPluginEdgeCases:
         mock_get.side_effect = [mock_response_today, mock_response_yesterday]
         
         plugin = SportsScoresPlugin(sample_manifest)
-        with patch.object(plugin, '_fetch_nfl_via_league', return_value=[]):
-            result = plugin._fetch_sport_scores("NFL", "American%20Football", "test_key", 3)
+        with patch.object(plugin, '_fetch_past_league', return_value=[]):
+            result = plugin._fetch_sport_scores("NFL", {"l": "4391"}, "test_key", 3)
             assert result == []
 
     @patch('plugins.sports_scores.requests.get')
@@ -1252,8 +1253,8 @@ class TestPluginEdgeCases:
         assert result == []
 
     @patch('plugins.sports_scores.requests.get')
-    def test_fetch_nfl_via_league_free_api_filters_scores(self, mock_get, sample_manifest):
-        """Test _fetch_nfl_via_league with free API filters and limits checks."""
+    def test_fetch_past_league_free_api_filters_scores(self, mock_get, sample_manifest):
+        """Test _fetch_past_league with free API filters and limits checks."""
         mock_response = Mock()
         mock_response.status_code = 200
         mock_response.headers = {"content-type": "application/json"}
@@ -1269,7 +1270,7 @@ class TestPluginEdgeCases:
         mock_get.return_value = mock_response
         
         plugin = SportsScoresPlugin(sample_manifest)
-        result = plugin._fetch_nfl_via_league("123", 5)
+        result = plugin._fetch_past_league("NFL", "4391", "123", 5)
         assert len(result) <= 5
 
     def test_abbreviate_team_name_acronym_generation(self, sample_manifest):
@@ -1352,3 +1353,80 @@ class TestManifestMetadata:
         allowed = {"string", "number", "boolean"}
         for name, meta in self.manifest["variables"]["simple"].items():
             assert meta["type"] in allowed, f"'{name}' has invalid type '{meta['type']}'"
+
+
+class TestMLBSupport:
+    """Tests for MLB scores and league-based queries."""
+
+    def test_mlb_is_a_valid_sport(self, sample_manifest):
+        """MLB must pass config validation."""
+        plugin = SportsScoresPlugin(sample_manifest)
+        errors = plugin.validate_config({"sports": ["MLB"]})
+        assert errors == []
+
+    def test_mlb_in_manifest_enum(self, sample_manifest):
+        """MLB must be selectable in the manifest settings schema."""
+        enum = sample_manifest["settings_schema"]["properties"]["sports"]["items"]["enum"]
+        assert "MLB" in enum
+
+    def test_leagues_queried_by_league_id(self):
+        """US leagues must be looked up by league ID, not by sport name.
+
+        Querying by sport returns every league in that sport (CFL for American
+        Football, KHL for Ice Hockey, NPB for Baseball).
+        """
+        from plugins.sports_scores import SPORT_QUERY
+        assert SPORT_QUERY["MLB"] == {"l": "4424"}
+        assert SPORT_QUERY["NFL"] == {"l": "4391"}
+        assert SPORT_QUERY["NHL"] == {"l": "4380"}
+        assert SPORT_QUERY["NBA"] == {"l": "4387"}
+        assert SPORT_QUERY["Soccer"] == {"s": "Soccer"}
+
+    @patch('plugins.sports_scores.requests.get')
+    def test_fetch_mlb_uses_league_param(self, mock_get, sample_manifest):
+        """The MLB day request must send the MLB league ID."""
+        mock_response = Mock()
+        mock_response.status_code = 200
+        mock_response.headers = {"content-type": "application/json"}
+        mock_response.text = "{}"
+        mock_response.json.return_value = {
+            "events": [
+                {
+                    "strHomeTeam": "Minnesota Twins",
+                    "strAwayTeam": "Cleveland Guardians",
+                    "intHomeScore": "2",
+                    "intAwayScore": "5",
+                    "strStatus": "FT",
+                    "dateEvent": "2026-09-12",
+                    "strTime": "00:10:00"
+                }
+            ]
+        }
+        mock_get.return_value = mock_response
+
+        plugin = SportsScoresPlugin(sample_manifest)
+        result = plugin._fetch_sport_scores("MLB", {"l": "4424"}, "123", 3)
+
+        assert mock_get.call_args[1]["params"]["l"] == "4424"
+        assert "s" not in mock_get.call_args[1]["params"]
+        assert len(result) == 1
+        assert result[0]["sport"] == "MLB"
+        assert result[0]["score1"] == 2
+        assert result[0]["score2"] == 5
+
+    def test_mlb_teams_use_official_codes(self, sample_manifest):
+        """MLB teams must abbreviate to their official codes, not generic acronyms."""
+        plugin = SportsScoresPlugin(sample_manifest)
+        assert plugin._abbreviate_team_name("Chicago Cubs", 5) == "CHC"
+        assert plugin._abbreviate_team_name("Cincinnati Reds", 5) == "CIN"
+        assert plugin._abbreviate_team_name("Colorado Rockies", 5) == "COL"
+        assert plugin._abbreviate_team_name("Arizona Diamondbacks", 5) == "ARI"
+        assert plugin._abbreviate_team_name("St. Louis Cardinals", 5) == "STL"
+
+    def test_mlb_formatted_line_fits_board(self, sample_manifest):
+        """A formatted MLB game must fit the board width."""
+        plugin = SportsScoresPlugin(sample_manifest)
+        formatted = plugin._format_game_string("Boston Red Sox", "New York Yankees", 5, 3, 20)
+        assert len(formatted) == 20
+        assert "BOS" in formatted
+        assert "NYY" in formatted

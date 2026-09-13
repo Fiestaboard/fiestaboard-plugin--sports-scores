@@ -1,12 +1,12 @@
 # Sports Scores Setup Guide
 
-The Sports Scores feature displays recent match scores from NFL, Soccer, NHL, and NBA. Perfect for keeping track of your favorite sports at a glance.
+The Sports Scores feature displays recent match scores from NFL, Soccer, NHL, NBA, and MLB. Perfect for keeping track of your favorite sports at a glance.
 
 ## Overview
 
 **What it does:**
 - Display recent sports match scores
-- Support for NFL, Soccer, NHL, and NBA
+- Support for NFL, Soccer, NHL, NBA, and MLB
 - Show multiple games per sport
 - Automatic formatting for board display
 - Optional API key for premium features
@@ -21,7 +21,7 @@ The Sports Scores feature displays recent match scores from NFL, Soccer, NHL, an
 
 - ✅ No API key required for basic functionality (uses free tier)
 - ✅ Optional: TheSportsDB API key for premium features
-- ✅ At least one sport selected (NFL, Soccer, NHL, or NBA)
+- ✅ At least one sport selected (NFL, Soccer, NHL, NBA, or MLB)
 
 ## Quick Setup
 
@@ -31,7 +31,7 @@ Via Web UI (Recommended):
 1. Go to the **Integrations** page
 2. Find **Sports Scores** plugin
 3. Toggle the **Sports Scores** plugin on
-4. Select at least one sport (NFL, Soccer, NHL, NBA)
+4. Select at least one sport (NFL, Soccer, NHL, NBA, MLB)
 5. Click **Save Changes**
 
 Via Environment Variables:
@@ -50,6 +50,7 @@ Choose which sports to display:
 - **Soccer** - Football/Soccer
 - **NHL** - Ice Hockey
 - **NBA** - Basketball
+- **MLB** - Baseball
 
 You can select multiple sports. The plugin will fetch recent games for each selected sport.
 
@@ -284,6 +285,11 @@ SPORTS_SCORES_REFRESH_SECONDS=300
 - Playoffs: April - June
 - Games daily during season
 
+### MLB (Baseball)
+- Regular season: March - September
+- Postseason: October - early November
+- Games daily during season
+
 ### Soccer
 - Various leagues worldwide
 - Year-round coverage
@@ -328,7 +334,7 @@ The `formatted` variable provides clean, board-friendly output:
 
 **Solutions:**
 1. **Check sport selection**: Ensure at least one sport is selected
-2. **Verify sport names**: Must be exactly "NFL", "Soccer", "NHL", or "NBA"
+2. **Verify sport names**: Must be exactly "NFL", "Soccer", "NHL", "NBA", or "MLB"
 3. **Check date**: Games may not be available for past dates
 4. **Try different sports**: Some sports may have limited data
 5. **Check API status**: TheSportsDB may be temporarily unavailable
@@ -352,7 +358,7 @@ The `formatted` variable provides clean, board-friendly output:
 2. **Check logs**: Look for API errors
 3. **Test API directly**: 
    ```bash
-   curl "https://www.thesportsdb.com/api/v1/json/123/searchevents.php?s=Soccer"
+   curl "https://www.thesportsdb.com/api/v1/json/123/eventsday.php?d=2026-09-12&l=4424"
    ```
 4. **Restart service**: May need container restart
 
@@ -361,7 +367,7 @@ The `formatted` variable provides clean, board-friendly output:
 **Problem:** "Invalid sports" error
 
 **Solutions:**
-1. **Use exact names**: Must be "NFL", "Soccer", "NHL", or "NBA" (case-sensitive)
+1. **Use exact names**: Must be "NFL", "Soccer", "NHL", "NBA", or "MLB" (case-sensitive)
 2. **Check spelling**: Common mistakes: "football" (use "NFL"), "hockey" (use "NHL")
 3. **Remove duplicates**: Each sport can only be selected once
 
@@ -382,7 +388,7 @@ Sports Scores uses **TheSportsDB API**:
 - **API**: https://www.thesportsdb.com/
 - **Free Tier**: API key "123" (30 requests/minute)
 - **Premium**: Higher limits, live scores, more features
-- **Coverage**: NFL, Soccer, NHL, NBA and more
+- **Coverage**: NFL, Soccer, NHL, NBA, MLB and more
 - **Update Frequency**: Real-time during events
 
 ## Advanced Usage
@@ -427,7 +433,7 @@ Filter games by sport in template (requires custom logic or multiple pages).
 
 **Next Steps:**
 1. Enable Sports Scores in Settings
-2. Select your favorite sports (NFL, Soccer, NHL, NBA)
+2. Select your favorite sports (NFL, Soccer, NHL, NBA, MLB)
 3. (Optional) Add API key for premium features
 4. Create a page with sports scores template
 5. Set as active page or combine with other data

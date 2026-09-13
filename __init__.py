@@ -1,6 +1,6 @@
 """Sports Scores plugin for FiestaBoard.
 
-Displays recent sports match scores from NFL, Soccer, NHL, and NBA
+Displays recent sports match scores from NFL, Soccer, NHL, NBA, and MLB
 using TheSportsDB API.
 """
 
@@ -13,12 +13,54 @@ from src.plugins.base import PluginBase, PluginResult
 
 logger = logging.getLogger(__name__)
 
-# Sport name to TheSportsDB identifier mapping
-SPORT_MAP = {
-    "NFL": "American%20Football",
-    "Soccer": "Soccer",
-    "NHL": "Ice%20Hockey",
-    "NBA": "Basketball",
+# Sport name to TheSportsDB query mapping.
+# Leagues are looked up by league ID ("l"), not by sport name ("s"): the sport
+# filter returns every league in that sport, so "American Football" yields CFL
+# games, "Ice Hockey" yields KHL, and "Baseball" yields Japan's NPB. Soccer has
+# no single league, so it stays a sport-wide query.
+SPORT_QUERY = {
+    "NFL": {"l": "4391"},
+    "Soccer": {"s": "Soccer"},
+    "NHL": {"l": "4380"},
+    "NBA": {"l": "4387"},
+    "MLB": {"l": "4424"},
+}
+
+# Official team codes, keyed by the team name TheSportsDB returns. The generic
+# abbreviator turns most MLB names into ambiguous two-letter acronyms
+# ("Chicago Cubs" and "Cincinnati Reds" both become "CC"/"CR"), so MLB teams
+# are mapped explicitly.
+TEAM_ABBREVIATIONS = {
+    "Arizona Diamondbacks": "ARI",
+    "Athletics": "ATH",
+    "Atlanta Braves": "ATL",
+    "Baltimore Orioles": "BAL",
+    "Boston Red Sox": "BOS",
+    "Chicago Cubs": "CHC",
+    "Chicago White Sox": "CHW",
+    "Cincinnati Reds": "CIN",
+    "Cleveland Guardians": "CLE",
+    "Colorado Rockies": "COL",
+    "Detroit Tigers": "DET",
+    "Houston Astros": "HOU",
+    "Kansas City Royals": "KC",
+    "Los Angeles Angels": "LAA",
+    "Los Angeles Dodgers": "LAD",
+    "Miami Marlins": "MIA",
+    "Milwaukee Brewers": "MIL",
+    "Minnesota Twins": "MIN",
+    "New York Mets": "NYM",
+    "New York Yankees": "NYY",
+    "Philadelphia Phillies": "PHI",
+    "Pittsburgh Pirates": "PIT",
+    "San Diego Padres": "SD",
+    "San Francisco Giants": "SF",
+    "Seattle Mariners": "SEA",
+    "St. Louis Cardinals": "STL",
+    "Tampa Bay Rays": "TB",
+    "Texas Rangers": "TEX",
+    "Toronto Blue Jays": "TOR",
+    "Washington Nationals": "WSH",
 }
 
 # TheSportsDB API base URL
@@ -51,7 +93,7 @@ class SportsScoresPlugin(PluginBase):
         if not sports:
             errors.append("At least one sport must be selected")
         else:
-            valid_sports = set(SPORT_MAP.keys())
+            valid_sports = set(SPORT_QUERY.keys())
             invalid_sports = [s for s in sports if s not in valid_sports]
             if invalid_sports:
                 errors.append(f"Invalid sports: {', '.join(invalid_sports)}. Valid options: {', '.join(valid_sports)}")
@@ -102,12 +144,12 @@ class SportsScoresPlugin(PluginBase):
             rate_limited = False
             
             for sport in sports:
-                if sport not in SPORT_MAP:
+                if sport not in SPORT_QUERY:
                     logger.warning(f"Unknown sport: {sport}, skipping")
                     continue
                 
-                sport_id = SPORT_MAP[sport]
-                games = self._fetch_sport_scores(sport, sport_id, api_key, max_games_per_sport)
+                query = SPORT_QUERY[sport]
+                games = self._fetch_sport_scores(sport, query, api_key, max_games_per_sport)
                 
                 # Check if we got rate limited (empty result)
                 if not games and sport == sports[0]:
@@ -177,12 +219,19 @@ class SportsScoresPlugin(PluginBase):
                 return PluginResult(available=True, data=self._cache)
             return PluginResult(available=False, error=str(e))
     
-    def _fetch_sport_scores(self, sport_name: str, sport_id: str, api_key: str, max_games: int) -> List[Dict[str, Any]]:
-        """Fetch scores for a specific sport."""
+    def _fetch_sport_scores(self, sport_name: str, query: Dict[str, str], api_key: str, max_games: int) -> List[Dict[str, Any]]:
+        """Fetch scores for a specific sport.
+        
+        query is the TheSportsDB filter for this sport: {"l": league_id} for
+        single-league sports, {"s": sport} for Soccer.
+        """
         try:
+            # League-backed sports can fall back to the past-events-by-league endpoint
+            league_id = query.get("l")
+            
             # Try V2 livescore endpoint first if we have a premium API key (not the free "123" key)
             if api_key and api_key != FREE_API_KEY:
-                games = self._fetch_v2_livescore(sport_name, sport_id, api_key, max_games)
+                games = self._fetch_v2_livescore(sport_name, query, api_key, max_games)
                 if games:
                     return games
             
@@ -194,11 +243,10 @@ class SportsScoresPlugin(PluginBase):
             
             # Try today first
             url = f"{API_BASE_URL_V1}/{api_key}/eventsday.php"
-            params = {"d": today.strftime("%Y-%m-%d"), "s": sport_id}
+            params = {"d": today.strftime("%Y-%m-%d"), **query}
             
             # Log the full URL for debugging
-            full_url = f"{url}?d={today.strftime('%Y-%m-%d')}&s={sport_id}"
-            logger.info(f"Fetching {sport_name} scores from: {full_url}")
+            logger.info(f"Fetching {sport_name} scores from: {url} with {params}")
             
             response = requests.get(url, params=params, timeout=10)
             
@@ -223,10 +271,10 @@ class SportsScoresPlugin(PluginBase):
             if "application/json" not in content_type:
                 logger.warning(f"Unexpected content type for {sport_name}: {content_type}")
                 logger.warning(f"Response text (first 500 chars): {response.text[:500]}")
-                # For NFL, try using eventspastleague endpoint as fallback
-                if sport_name == "NFL":
-                    logger.info(f"Trying eventspastleague endpoint for NFL (league ID 4391)")
-                    return self._fetch_nfl_via_league(api_key, max_games)
+                # Fall back to the past-events-by-league endpoint
+                if league_id:
+                    logger.info(f"Trying eventspastleague endpoint for {sport_name} (league ID {league_id})")
+                    return self._fetch_past_league(sport_name, league_id, api_key, max_games)
                 return []
             
             # Check if response is empty
@@ -249,15 +297,14 @@ class SportsScoresPlugin(PluginBase):
             events = data.get("event") or data.get("events")
             if events is None:
                 logger.debug(f"No event/events field in response for {sport_name} on {today}. Response keys: {list(data.keys())}")
-                # For NFL, try league endpoint first before trying yesterday
-                if sport_name == "NFL":
-                    logger.info(f"No events field for NFL, trying league endpoint")
-                    return self._fetch_nfl_via_league(api_key, max_games)
+                # Try the league endpoint first before trying yesterday
+                if league_id:
+                    logger.info(f"No events field for {sport_name}, trying league endpoint")
+                    return self._fetch_past_league(sport_name, league_id, api_key, max_games)
                 # Try yesterday's date if today has no events
                 logger.info(f"Trying yesterday's date for {sport_name}: {yesterday}")
-                params = {"d": yesterday.strftime("%Y-%m-%d"), "s": sport_id}
-                full_url = f"{url}?d={yesterday.strftime('%Y-%m-%d')}&s={sport_id}"
-                logger.info(f"Fetching {sport_name} scores from: {full_url}")
+                params = {"d": yesterday.strftime("%Y-%m-%d"), **query}
+                logger.info(f"Fetching {sport_name} scores from: {url} with {params}")
                 
                 response = requests.get(url, params=params, timeout=10)
                 if response.status_code == 200:
@@ -266,20 +313,20 @@ class SportsScoresPlugin(PluginBase):
                         events = data.get("event") or data.get("events")
                         if events is None:
                             logger.debug(f"No events found for {sport_name} on {yesterday} either")
-                            # For NFL, try league endpoint as last resort
-                            if sport_name == "NFL":
-                                return self._fetch_nfl_via_league(api_key, max_games)
+                            # Try the league endpoint as last resort
+                            if league_id:
+                                return self._fetch_past_league(sport_name, league_id, api_key, max_games)
                             return []
                     except ValueError:
                         logger.error(f"Failed to parse JSON response for {sport_name} (yesterday)")
-                        # For NFL, try league endpoint as fallback
-                        if sport_name == "NFL":
-                            return self._fetch_nfl_via_league(api_key, max_games)
+                        # Fall back to the league endpoint
+                        if league_id:
+                            return self._fetch_past_league(sport_name, league_id, api_key, max_games)
                         return []
                 else:
-                    # For NFL, try league endpoint as fallback
-                    if sport_name == "NFL":
-                        return self._fetch_nfl_via_league(api_key, max_games)
+                    # Fall back to the league endpoint
+                    if league_id:
+                        return self._fetch_past_league(sport_name, league_id, api_key, max_games)
                     return []
             
             if not isinstance(events, list):
@@ -288,10 +335,10 @@ class SportsScoresPlugin(PluginBase):
             
             if not events:
                 logger.debug(f"No events found for {sport_name}")
-                # For NFL, try league-based endpoint as fallback
-                if sport_name == "NFL":
-                    logger.info(f"No events found via eventsday for NFL, trying league endpoint")
-                    return self._fetch_nfl_via_league(api_key, max_games)
+                # Fall back to the league-based endpoint
+                if league_id:
+                    logger.info(f"No events found via eventsday for {sport_name}, trying league endpoint")
+                    return self._fetch_past_league(sport_name, league_id, api_key, max_games)
                 return []
             
             logger.debug(f"Found {len(events)} events for {sport_name}")
@@ -336,7 +383,7 @@ class SportsScoresPlugin(PluginBase):
                     from datetime import timedelta
                     day_before = datetime.now().date() - timedelta(days=2)
                     logger.info(f"Trying day before yesterday ({day_before}) for {sport_name} to find games with scores")
-                    params = {"d": day_before.strftime("%Y-%m-%d"), "s": sport_id}
+                    params = {"d": day_before.strftime("%Y-%m-%d"), **query}
                     try:
                         response = requests.get(url, params=params, timeout=10)
                         if response.status_code == 200:
@@ -370,19 +417,13 @@ class SportsScoresPlugin(PluginBase):
             logger.exception(f"Unexpected error fetching {sport_name} scores")
             return []
     
-    def _fetch_v2_livescore(self, sport_name: str, sport_id: str, api_key: str, max_games: int) -> List[Dict[str, Any]]:
+    def _fetch_v2_livescore(self, sport_name: str, query: Dict[str, str], api_key: str, max_games: int) -> List[Dict[str, Any]]:
         """Fetch live scores using V2 API (premium only)."""
         try:
-            # Map sport name to V2 API sport identifier
-            v2_sport_map = {
-                "NFL": "American_Football",
-                "Soccer": "Soccer",
-                "NHL": "Ice_Hockey",
-                "NBA": "Basketball",
-            }
-            
-            v2_sport = v2_sport_map.get(sport_name, sport_name.lower())
-            url = f"{API_BASE_URL_V2}/livescore/{v2_sport}"
+            # The V2 livescore path takes either a league ID or a sport name,
+            # so the same filter used for V1 works here
+            v2_id = query.get("l") or query.get("s", sport_name)
+            url = f"{API_BASE_URL_V2}/livescore/{v2_id}"
             headers = {"X-API-KEY": api_key}
             
             response = requests.get(url, headers=headers, timeout=10)
@@ -413,46 +454,44 @@ class SportsScoresPlugin(PluginBase):
             logger.debug(f"V2 livescore failed for {sport_name}: {e}")
             return []
     
-    def _fetch_nfl_via_league(self, api_key: str, max_games: int) -> List[Dict[str, Any]]:
-        """Fetch NFL scores using eventspastleague endpoint (NFL League ID: 4391)."""
+    def _fetch_past_league(self, sport_name: str, league_id: str, api_key: str, max_games: int) -> List[Dict[str, Any]]:
+        """Fetch scores using the eventspastleague endpoint for a league ID."""
         try:
-            # NFL League ID in TheSportsDB
-            nfl_league_id = "4391"
             url = f"{API_BASE_URL_V1}/{api_key}/eventspastleague.php"
-            params = {"id": nfl_league_id}
+            params = {"id": league_id}
             
-            logger.info(f"Fetching NFL scores via league endpoint: {url}?id={nfl_league_id}")
+            logger.info(f"Fetching {sport_name} scores via league endpoint: {url}?id={league_id}")
             
             response = requests.get(url, params=params, timeout=10)
             
             if response.status_code != 200:
-                logger.warning(f"NFL league endpoint returned status {response.status_code}")
+                logger.warning(f"{sport_name} league endpoint returned status {response.status_code}")
                 return []
             
             content_type = response.headers.get("content-type", "").lower()
             if "application/json" not in content_type:
-                logger.warning(f"NFL league endpoint returned non-JSON: {content_type}")
+                logger.warning(f"{sport_name} league endpoint returned non-JSON: {content_type}")
                 return []
             
             try:
                 data = response.json()
             except ValueError as e:
-                logger.error(f"Failed to parse JSON from NFL league endpoint: {e}")
+                logger.error(f"Failed to parse JSON from {sport_name} league endpoint: {e}")
                 return []
             
             events = data.get("events", [])
             if not events or not isinstance(events, list):
-                logger.debug(f"No events found in NFL league response")
+                logger.debug(f"No events found in {sport_name} league response")
                 return []
             
-            logger.info(f"Found {len(events)} NFL events via league endpoint")
+            logger.info(f"Found {len(events)} {sport_name} events via league endpoint")
             
             games = []
             is_free_api = (api_key == FREE_API_KEY or not api_key or api_key == "")
             max_events_to_check = max_games * 10 if is_free_api else max_games * 2
             
             for event in events[:max_events_to_check]:
-                game = self._parse_event(event, "NFL")
+                game = self._parse_event(event, sport_name)
                 if game:
                     if is_free_api:
                         score1 = game.get("score1", 0)
@@ -468,11 +507,16 @@ class SportsScoresPlugin(PluginBase):
             return games
             
         except Exception as e:
-            logger.error(f"Error fetching NFL via league endpoint: {e}")
+            logger.error(f"Error fetching {sport_name} via league endpoint: {e}")
             return []
     
     def _abbreviate_team_name(self, team_name: str, max_length: int) -> str:
         """Intelligently abbreviate a team name to fit within max_length, removing spaces."""
+        # Prefer the official team code when one is known and fits
+        known = TEAM_ABBREVIATIONS.get(team_name)
+        if known and len(known) <= max_length:
+            return known
+        
         # Common abbreviations (apply before removing spaces)
         abbreviations = {
             "United": "Utd",
