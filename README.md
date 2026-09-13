@@ -1,6 +1,6 @@
 # Sports Scores Plugin
 
-Display recent sports match scores from NFL, Soccer, NHL, and NBA using TheSportsDB API.
+Display recent sports match scores from NFL, Soccer, NHL, NBA, and MLB using TheSportsDB API.
 
 **→ [Setup Guide](./docs/SETUP.md)** - Configuration and optional API key setup
 
@@ -10,7 +10,7 @@ The Sports Scores plugin fetches recent sports match scores from TheSportsDB API
 
 ## Features
 
-- Support for 4 sports: NFL, Soccer, NHL, NBA
+- Support for 5 sports: NFL, Soccer, NHL, NBA, MLB
 - Fetch recent completed and live games
 - Optional API key for premium features
 - Configurable number of games per sport
@@ -40,17 +40,25 @@ The plugin uses TheSportsDB V1 API for fetching sports events:
 
 ### Endpoints Used
 
-- `searchevents.php` - Search for events by sport
-  - Parameters: `s` (sport identifier)
+- `eventsday.php` - Events for a given day
+  - Parameters: `d` (date), plus `l` (league ID) or `s` (sport identifier)
+- `eventspastleague.php` - Recent past events for a league, used as a fallback
+  - Parameters: `id` (league ID)
 
 ### Sport Mapping
 
-The plugin maps user-friendly sport names to TheSportsDB identifiers:
+The plugin maps user-friendly sport names to TheSportsDB league IDs:
 
-- `NFL` → `American%20Football`
-- `Soccer` → `Soccer`
-- `NHL` → `Ice%20Hockey`
-- `NBA` → `Basketball`
+- `NFL` → league `4391`
+- `NHL` → league `4380`
+- `NBA` → league `4387`
+- `MLB` → league `4424`
+- `Soccer` → sport `Soccer`
+
+Leagues are queried by league ID rather than by sport name, because the sport
+filter returns every league in that sport: `American Football` returns CFL
+games, `Ice Hockey` returns KHL, and `Baseball` returns Japan's NPB. Soccer has
+no single league, so it remains a sport-wide query.
 
 ## Screenshot
 
@@ -216,7 +224,7 @@ python scripts/run_plugin_tests.py --plugin=sports_scores
 
 To add support for additional sports:
 
-1. Add sport mapping to `SPORT_MAP` in `__init__.py`
+1. Add the league ID (or sport identifier) to `SPORT_QUERY` in `__init__.py`
 2. Add sport to enum in `manifest.json` settings schema
 3. Update documentation
 
@@ -228,6 +236,7 @@ The free tier has rate limits (30 requests/minute). The plugin handles 429 respo
 
 Team names are intelligently abbreviated for optimal display:
 
+- **Official Codes**: MLB teams use their official codes (e.g., "Chicago Cubs" → "CHC")
 - **Space Removal**: All spaces are removed from abbreviated names (e.g., "Real Sociedad" → "RSoc")
 - **Common Abbreviations**: The plugin applies common abbreviations (e.g., "United" → "Utd", "Sociedad" → "Soc")
 - **Prefix Handling**: Common prefixes like "FC", "AC" are preserved and the rest is abbreviated

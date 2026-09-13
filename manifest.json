@@ -1,8 +1,8 @@
 {
   "id": "sports_scores",
   "name": "Sports Scores",
-  "version": "1.1.2",
-  "description": "Display recent sports match scores from NFL, Soccer, NHL, and NBA",
+  "version": "1.2.0",
+  "description": "Display recent sports match scores from NFL, Soccer, NHL, NBA, and MLB",
   "author": "FiestaBoard Team",
   "repository": "https://github.com/Fiestaboard/fiestaboard-plugin--sports-scores",
   "documentation": "README.md",
@@ -28,7 +28,8 @@
             "NFL",
             "Soccer",
             "NHL",
-            "NBA"
+            "NBA",
+            "MLB"
           ]
         },
         "uniqueItems": true
@@ -73,7 +74,7 @@
     {
       "name": "SPORTS_SCORES_SPORTS",
       "required": false,
-      "description": "Comma-separated list of sports (NFL,Soccer,NHL,NBA)"
+      "description": "Comma-separated list of sports (NFL,Soccer,NHL,NBA,MLB)"
     },
     {
       "name": "SPORTS_SCORES_MAX_GAMES",
@@ -214,7 +215,7 @@
     {
       "src": "docs/board-display.png",
       "alt": "Sports Scores displayed on a Vestaboard",
-      "caption": "Display recent sports match scores from NFL, Soccer, NHL, and NBA",
+      "caption": "Display recent sports match scores from NFL, Soccer, NHL, NBA, and MLB",
       "primary": true
     }
   ],
