@@ -109,6 +109,16 @@ class SportsScoresPlugin(PluginBase):
         
         return errors
     
+    def on_config_change(self, old_config: Dict[str, Any], new_config: Dict[str, Any]) -> None:
+        """Drop the cached scores so a config change takes effect immediately.
+        
+        The cache is keyed only on age, so without this a change to `sports`
+        or `max_games_per_sport` would keep serving results computed under
+        the old config for up to refresh_seconds.
+        """
+        self._cache = None
+        logger.debug("Cleared cached scores after config change")
+    
     def fetch_data(self) -> PluginResult:
         """Fetch sports scores for all configured sports."""
         sports = self.config.get("sports", [])
