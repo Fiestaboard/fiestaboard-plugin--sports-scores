@@ -3,6 +3,7 @@
 import pytest
 from unittest.mock import patch, MagicMock, Mock
 import json
+from datetime import datetime, timezone
 from pathlib import Path
 
 from plugins.sports_scores import SportsScoresPlugin
@@ -1141,6 +1142,23 @@ class TestPluginEdgeCases:
         with patch.object(plugin, '_fetch_sport_scores', side_effect=Exception("Test error")):
             result = plugin.fetch_data()
             assert not result.available
+
+    def test_config_change_invalidates_cache(self, sample_manifest):
+        """Test a config change drops the cache instead of serving stale scores."""
+        plugin = SportsScoresPlugin(sample_manifest)
+        plugin.config = {"sports": ["MLB"], "refresh_seconds": 300}
+        plugin._cache = {
+            "games": [{"sport": "MLB"}],
+            "last_updated": datetime.now(timezone.utc).isoformat(),
+        }
+
+        plugin.config = {"sports": ["NFL"], "refresh_seconds": 300}
+        assert plugin._cache is None
+
+        with patch.object(plugin, '_fetch_sport_scores', return_value=[{"sport": "NFL"}]):
+            result = plugin.fetch_data()
+        assert result.available
+        assert result.data["games"] == [{"sport": "NFL"}]
 
     @patch('plugins.sports_scores.requests.get')
     def test_fetch_sport_scores_empty_response_text(self, mock_get, sample_manifest):
