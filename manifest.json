@@ -1,7 +1,7 @@
 {
   "id": "sports_scores",
   "name": "Sports Scores",
-  "version": "1.2.1",
+  "version": "1.2.2",
   "description": "Display recent sports match scores from NFL, Soccer, NHL, NBA, and MLB",
   "author": "FiestaBoard Team",
   "repository": "https://github.com/Fiestaboard/fiestaboard-plugin--sports-scores",
@@ -150,9 +150,9 @@
         "example": "8:20 PM"
       },
       "formatted": {
-        "description": "Pre-formatted game score display",
+        "description": "Pre-formatted game score display, sized to the current board (a Flagship's 22 columns when placed outside a board-scoped render). Reserves 2 tiles so it fits alongside the team1_color/team2_color tiles in the recommended {{team1_color}}{{formatted}}{{team2_color}} layout; up to 118 on the largest supported note-array panel (120 columns).",
         "type": "string",
-        "max_length": 22,
+        "max_length": 118,
         "group": "display",
         "example": "SF 24 - KC 21 Final"
       },
@@ -208,7 +208,7 @@
     "games.*.score1": 3,
     "games.*.score2": 3,
     "games.*.status": 15,
-    "games.*.formatted": 20
+    "games.*.formatted": 118
   },
   "fiestaboard_version": ">=2.10.0",
   "screenshots": [
@@ -238,6 +238,17 @@
         "{66}{66} LIVE SCORES",
         "SF 24 - KC 21",
         "6 GAMES TODAY"
+      ]
+    },
+    {
+      "label": "Note Array (2 wide)",
+      "device_type": "note_array",
+      "notes_wide": 2,
+      "notes_tall": 1,
+      "rows": [
+        "         LIVE SCORES",
+        "  {66}SF 24 - KC 21{63}      NBA",
+        "        12 GAMES TODAY"
       ]
     }
   ],
