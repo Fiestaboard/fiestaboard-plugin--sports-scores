@@ -9,9 +9,16 @@ from datetime import datetime, timezone
 import logging
 import requests
 
+from src.devices import BoardContext
 from src.plugins.base import PluginBase, PluginResult
+from src.text_to_board import take_tiles
 
 logger = logging.getLogger(__name__)
+
+# How many tiles the recommended colored-line template reserves around
+# `formatted` (`{{team1_color}}{{formatted}}{{team2_color}}`). Not a board
+# dimension -- it never changes with board size, only the derived width does.
+COLOR_TILE_RESERVE = 2
 
 # Sport name to TheSportsDB query mapping.
 # Leagues are looked up by league ID ("l"), not by sport name ("s"): the sport
@@ -79,11 +86,26 @@ class SportsScoresPlugin(PluginBase):
     def __init__(self, manifest: Dict[str, Any]):
         """Initialize the sports scores plugin."""
         super().__init__(manifest)
+        # DATA ONLY: raw fetched game data (team names, scores, dates), never
+        # rendered/board-sized layout. Keyed only by age (see fetch_data), not
+        # by geometry -- so it must never hold a "formatted" field baked for
+        # one board's width, or that layout would leak onto a different
+        # board's render. See _with_layout(), which adds "formatted" fresh
+        # from self.board on every read of this cache.
         self._cache: Optional[Dict[str, Any]] = None
-    
+
     @property
     def plugin_id(self) -> str:
         return "sports_scores"
+
+    def _effective_board(self) -> BoardContext:
+        """The board being rendered on, defaulting to a Flagship when unbound.
+
+        ``self.board`` is ``None`` outside a board-scoped render (unit tests,
+        legacy callers): the contract is to assume a Flagship rather than
+        crash.
+        """
+        return self.board or BoardContext.from_device_type("flagship")
     
     def validate_config(self, config: Dict[str, Any]) -> List[str]:
         """Validate sports scores configuration."""
@@ -146,7 +168,7 @@ class SportsScoresPlugin(PluginBase):
                         age_seconds = (datetime.now(timezone.utc) - cache_time).total_seconds()
                         if age_seconds < refresh_seconds:
                             logger.debug(f"Using cached data (age: {age_seconds:.0f}s < {refresh_seconds}s)")
-                            return PluginResult(available=True, data=self._cache)
+                            return PluginResult(available=True, data=self._with_layout(self._cache))
                     except Exception:
                         pass  # If cache time parsing fails, continue to fetch
             
@@ -181,24 +203,26 @@ class SportsScoresPlugin(PluginBase):
             # If rate limited and we have cache, return cache
             if rate_limited and self._cache and self._cache.get("games"):
                 logger.info("Returning cached data due to rate limiting")
-                return PluginResult(available=True, data=self._cache)
-            
+                return PluginResult(available=True, data=self._with_layout(self._cache))
+
             if not all_games:
                 # If no games but we have cache, return cache
                 if self._cache and self._cache.get("games"):
                     logger.info("No new games found, returning cached data")
-                    return PluginResult(available=True, data=self._cache)
+                    return PluginResult(available=True, data=self._with_layout(self._cache))
                 return PluginResult(
                     available=False,
                     error="No games found for selected sports"
                 )
-            
+
             # Sort all games by date (most recent first)
             all_games.sort(key=lambda g: g.get("date", ""), reverse=True)
-            
-            # Primary game (first one)
+
+            # Primary game (first one). Note: NOT "formatted" -- that is
+            # board-dependent layout, added fresh by _with_layout() below,
+            # never baked into this cached, geometry-agnostic payload.
             primary = all_games[0] if all_games else {}
-            
+
             data = {
                 # Primary game fields
                 "sport": primary.get("sport", ""),
@@ -209,7 +233,6 @@ class SportsScoresPlugin(PluginBase):
                 "status": primary.get("status", ""),
                 "date": primary.get("date", ""),
                 "time": primary.get("time", ""),
-                "formatted": primary.get("formatted", ""),
                 # Aggregate
                 "sport_count": len(sports),
                 "game_count": len(all_games),
@@ -217,17 +240,51 @@ class SportsScoresPlugin(PluginBase):
                 # Array of all games
                 "games": all_games,
             }
-            
+
+            # self._cache holds ONLY this geometry-independent data. It is
+            # keyed by age (last_updated), not by board, so it must never
+            # carry a rendered "formatted" line -- that gets added fresh,
+            # sized to whichever board is currently bound, by _with_layout().
             self._cache = data
-            return PluginResult(available=True, data=data)
-            
+            return PluginResult(available=True, data=self._with_layout(data))
+
         except Exception as e:
             logger.exception("Error fetching sports scores")
             # Return cache if available even on error
             if self._cache and self._cache.get("games"):
                 logger.info("Error occurred, returning cached data")
-                return PluginResult(available=True, data=self._cache)
+                return PluginResult(available=True, data=self._with_layout(self._cache))
             return PluginResult(available=False, error=str(e))
+
+    def _with_layout(self, data: Dict[str, Any]) -> Dict[str, Any]:
+        """Return a copy of *data* with board-sized ``formatted`` fields.
+
+        ``data`` (and ``self._cache``) hold every field verbatim except
+        ``formatted``, which depends on board width. It is computed here,
+        from ``self.board`` (via :meth:`_effective_board`), on every call --
+        never trusted from a cached payload -- so a Flagship render never
+        serves a Note's (or a note-array's) layout, or vice versa, even
+        when both share the same underlying cached game data.
+        """
+        games = [self._laid_out_game(game) for game in (data.get("games") or [])]
+        primary = games[0] if games else {}
+        result = dict(data)
+        result["games"] = games
+        result["formatted"] = primary.get("formatted", "")
+        return result
+
+    def _laid_out_game(self, game: Dict[str, Any]) -> Dict[str, Any]:
+        """Return a copy of *game* with a ``formatted`` line sized to the current board."""
+        board = self._effective_board()
+        width = max(board.cols - COLOR_TILE_RESERVE, 1)
+        formatted = self._format_game_string(
+            game.get("team1_full", game.get("team1", "")),
+            game.get("team2_full", game.get("team2", "")),
+            game.get("score1", 0),
+            game.get("score2", 0),
+            max_length=width,
+        )
+        return {**game, "formatted": formatted}
     
     def _fetch_sport_scores(self, sport_name: str, query: Dict[str, str], api_key: str, max_games: int) -> List[Dict[str, Any]]:
         """Fetch scores for a specific sport.
@@ -593,8 +650,23 @@ class SportsScoresPlugin(PluginBase):
         # Final fallback: truncate
         return abbreviated[:max_length]
     
-    def _format_game_string(self, team1: str, team2: str, score1: int, score2: int, max_length: int = 22) -> str:
-        """Format a game string with abbreviated team names to fit max_length, with aligned scores."""
+    def _format_game_string(
+        self,
+        team1: str,
+        team2: str,
+        score1: int,
+        score2: int,
+        max_length: Optional[int] = None,
+    ) -> str:
+        """Format a game string with abbreviated team names to fit max_length, with aligned scores.
+
+        ``max_length`` defaults to the current board's width (a Flagship's
+        when no board is bound) rather than a hardcoded literal, so a caller
+        that omits it still gets a line sized to the actual board.
+        """
+        if max_length is None:
+            max_length = self._effective_board().cols
+
         # Always use the score format: "TEAM1 SCORE1 - SCORE2 TEAM2"
         # Use "?" for scores when there are no scores yet
         if score1 > 0 or score2 > 0:
@@ -681,16 +753,21 @@ class SportsScoresPlugin(PluginBase):
                 team1_color = "{65}"  # Yellow
                 team2_color = "{65}"  # Yellow
             
-            # Format the game string with abbreviations to fit 22 chars
-            # Create formatted string accounting for color tiles (2 tiles = 2 chars)
-            # When used with colors: {{team1_color}}{{formatted}}{{team2_color}}
-            # Total width is 22, so formatted should be 20 to account for 2 color tiles
-            formatted = self._format_game_string(team1, team2, score1, score2, max_length=20)
-            
-            # Truncate team names if too long (max 10 chars each for display)
+            # NOTE: no "formatted" field here. The composed, board-width
+            # layout line is board-dependent and this dict ends up in
+            # self._cache (see fetch_data) -- a geometry-agnostic cache of
+            # raw data. "formatted" is added fresh, sized to whichever board
+            # is bound at read time, by _laid_out_game()/_with_layout().
+            #
+            # Truncate team names if too long (max 10 chars each for
+            # display). This is a data cap, not a layout literal -- team1/
+            # team2 are general-purpose template variables, not sized to a
+            # specific board. The board-width-aware abbreviation used inside
+            # the "formatted" line is computed separately in
+            # _format_game_string() from team1_full/team2_full.
             team1_display = team1[:10] if len(team1) > 10 else team1
             team2_display = team2[:10] if len(team2) > 10 else team2
-            
+
             return {
                 "sport": sport_name,
                 "team1": team1_display,
@@ -704,7 +781,6 @@ class SportsScoresPlugin(PluginBase):
                 "status": status,
                 "date": date,
                 "time": time,
-                "formatted": formatted,
             }
             
         except Exception as e:
@@ -712,26 +788,41 @@ class SportsScoresPlugin(PluginBase):
             return None
     
     def get_formatted_display(self) -> Optional[List[str]]:
-        """Return default formatted sports scores display."""
+        """Return a formatted sports-scores display sized to the current board.
+
+        Dead in core today (nothing calls this hook), but it is the
+        documented plugin contract, so it is held to the same geometry rules
+        as the live `fetch_data`/`formatted_lines` path: every dimension is
+        derived from `self.board` (defaulting to a Flagship when unbound),
+        and a taller board gets more game rows rather than a fixed four.
+        """
         if not self._cache:
             result = self.fetch_data()
             if not result.available:
                 return None
-        
+
         data = self._cache
         if not data:
             return None
-        
-        games = data.get("games", [])
-        lines = ["SPORTS SCORES".center(22), ""]
-        
-        for game in games[:4]:
-            lines.append(game.get("formatted", "")[:22])
-        
-        while len(lines) < 6:
+
+        board = self._effective_board()
+        games = [self._laid_out_game(game) for game in (data.get("games") or [])]
+
+        header, _ = take_tiles("SPORTS SCORES".center(board.cols), board.cols)
+        lines = [header]
+
+        # Reflow: only the header row is reserved. Every additional row goes
+        # to another game, so a taller board shows strictly more games
+        # instead of staying capped at a fixed count.
+        body_rows = max(board.rows - len(lines), 0)
+        for game in games[:body_rows]:
+            line, _ = take_tiles(game.get("formatted", ""), board.cols)
+            lines.append(line)
+
+        while len(lines) < board.rows:
             lines.append("")
-        
-        return lines[:6]
+
+        return lines[:board.rows]
 
 
 # Export the plugin class

@@ -1104,7 +1104,13 @@ class TestPluginEdgeCases:
         with patch.object(plugin, '_fetch_sport_scores', return_value=[]):
             result = plugin.fetch_data()
             assert result.available
-            assert result.data == plugin._cache
+            # Every geometry-independent field round-trips from the cache
+            # untouched; "formatted" is added fresh (sized to the current
+            # board) rather than trusted from the cache, so it is not part
+            # of this comparison. See _with_layout().
+            assert result.data["last_updated"] == plugin._cache["last_updated"]
+            assert result.data["games"][0]["sport"] == plugin._cache["games"][0]["sport"]
+            assert "formatted" in result.data["games"][0]
 
     def test_fetch_data_no_games_with_cache(self, sample_manifest):
         """Test fetch_data returns cache when no new games found."""
@@ -1131,7 +1137,10 @@ class TestPluginEdgeCases:
         with patch.object(plugin, '_fetch_sport_scores', side_effect=Exception("Test error")):
             result = plugin.fetch_data()
             assert result.available
-            assert result.data == plugin._cache
+            # See test_fetch_data_rate_limited_returns_cache: "formatted" is
+            # always recomputed fresh, so it is excluded from this comparison.
+            assert result.data["last_updated"] == plugin._cache["last_updated"]
+            assert result.data["games"][0]["sport"] == plugin._cache["games"][0]["sport"]
 
     def test_fetch_data_exception_no_cache(self, sample_manifest):
         """Test fetch_data returns error when exception and no cache."""
@@ -1158,7 +1167,10 @@ class TestPluginEdgeCases:
         with patch.object(plugin, '_fetch_sport_scores', return_value=[{"sport": "NFL"}]):
             result = plugin.fetch_data()
         assert result.available
-        assert result.data["games"] == [{"sport": "NFL"}]
+        # "formatted" is added fresh at read time (see _with_layout), so the
+        # raw game dict gains that key rather than round-tripping verbatim.
+        assert result.data["games"][0]["sport"] == "NFL"
+        assert "formatted" in result.data["games"][0]
 
     @patch('plugins.sports_scores.requests.get')
     def test_fetch_sport_scores_empty_response_text(self, mock_get, sample_manifest):
